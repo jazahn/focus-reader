@@ -1,0 +1,14 @@
+/*
+ * Styling for the CSS Custom Highlight API range group registered by content.js.
+ *
+ * ::highlight() only accepts a short list of properties -- font-weight is NOT
+ * among them -- so weight is faked by smearing the glyph with two stacked
+ * text-shadows in the text's own color. currentColor keeps it correct on dark
+ * backgrounds, inside links, and anywhere the page recolors text.
+ */
+
+::highlight(focus-fixation) {
+  text-shadow:
+    0 0 var(--focus-strength, 0.03em) currentColor,
+    0 0 var(--focus-strength, 0.03em) currentColor;
+}
