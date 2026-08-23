@@ -1,6 +1,6 @@
-# Bionic Reader (in-place)
+# Focus Reader
 
-A Chrome extension that adds bionic-reading fixation points to article text
+A Chrome extension that emphasizes the leading letters of words in article text
 **on the live page**, without building a reader view and without modifying the
 page's DOM.
 
@@ -60,7 +60,7 @@ JavaScript contexts. They communicate two ways, both used here:
 1. Open Chrome and go to `chrome://extensions`.
 2. Turn on **Developer mode** (toggle, top right).
 3. Click **Load unpacked** and select this folder
-   (`/Users/jazahn/workshop/bionic-reader`).
+   (the one containing `manifest.json`).
 4. The extension appears as a card. Pin it to the toolbar via the puzzle-piece
    icon so you can reach the popup.
 
@@ -111,9 +111,19 @@ navigate between pages without a reload.
 
 ### Controls
 
-- **Toolbar icon** — popup with the global toggle, a per-site override, and
-  three sliders (fixation length, boldness, minimum paragraph length).
-- **Alt+B** — toggle the current site on or off. Rebind at
+- **Toolbar icon** — the popup. The switch beside the title is a true master
+  off: when it is off, nothing runs anywhere, and a per-site rule cannot
+  override it. Below it are a per-site switch and three sliders (fixation
+  length, boldness, minimum paragraph length), all of which grey out and stop
+  responding while the master is off.
+- **The icon itself shows state.** Full color means the current tab is being
+  painted; faded grey means it is not — whether because the master is off, this
+  site is off, or the page is one extensions cannot touch (`chrome://`, the web
+  store, the PDF viewer). The manifest's default icon is the faded variant, so
+  any tab that never reports in is correctly dim without needing to be detected.
+- **Alt+B** — toggle the current tab. If it is being painted, this turns the
+  site off; if it is not, this clears the site's block *and* lifts the master
+  switch, so the shortcut always changes what you are looking at. Rebind at
   `chrome://extensions/shortcuts`.
 
 ### Making changes
@@ -164,7 +174,8 @@ nothing is painted, the problem is scheduling rather than scoring.
 
 ### The central trick: no DOM mutation
 
-Most bionic-reading code wraps the first half of every word in `<b>` tags. That
+Most implementations of this technique wrap the first half of every word in `<b>`
+tags. That
 is what forces the reader-view approach, because rewriting text nodes breaks
 three things badly:
 
@@ -183,11 +194,11 @@ and style that name from CSS:
 ```js
 const highlight = new Highlight();
 highlight.add(range);
-CSS.highlights.set('bionic-fixation', highlight);
+CSS.highlights.set('focus-fixation', highlight);
 ```
 
 ```css
-::highlight(bionic-fixation) { /* styles */ }
+::highlight(focus-fixation) { /* styles */ }
 ```
 
 The page's DOM is never touched. Reverting is one `CSS.highlights.delete()`
@@ -278,4 +289,12 @@ This one splits the work by cost:
 | [content.css](content.css) | The `::highlight()` rule that fakes bold |
 | [background.js](background.js) | Service worker; handles Alt+B only |
 | [popup.html](popup.html) / [popup.css](popup.css) / [popup.js](popup.js) | Toolbar UI |
+| [icons/](icons/) | Generated PNGs, 16/32/48/128 |
 | [test-page.html](test-page.html) | Self-labeling test bench |
+| [diagnose.js](diagnose.js) | Paste-in console script explaining a page's verdicts |
+| [tools/make-icons.py](tools/make-icons.py) | Redraws the icons; stdlib only |
+| [tools/package.sh](tools/package.sh) | Builds the store ZIP from the shipping files |
+| [PUBLISHING.md](PUBLISHING.md) | Chrome Web Store walkthrough |
+
+Everything from `test-page.html` down is development-only and is excluded from
+the packaged build.

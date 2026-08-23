@@ -1,0 +1,4 @@
+# Store upload artifacts -- rebuildable via tools/package.sh
+dist/
+
+.DS_Store

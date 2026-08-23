@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <div class="masthead">
+      <h1>Focus Reader</h1>
+      <label class="switch switch--lg" title="Turn Focus Reader on or off everywhere">
+        <input type="checkbox" id="enabled" />
+        <span class="track"></span>
+      </label>
+    </div>
+
+    <p id="unsupported" hidden>
+      This browser is missing the CSS Custom Highlight API or Intl.Segmenter.
+      Chrome 105 or newer is required.
+    </p>
+
+    <div id="panel">
+      <label class="row">
+        <span>On <b id="host">this site</b></span>
+        <span class="switch">
+          <input type="checkbox" id="siteEnabled" />
+          <span class="track"></span>
+        </span>
+      </label>
+
+      <hr />
+
+      <label class="slider">
+        <span>Fixation length <output id="intensityOut"></output></span>
+        <input type="range" id="intensity" min="0.2" max="0.8" step="0.05" />
+      </label>
+
+      <label class="slider">
+        <span>Boldness <output id="strengthOut"></output></span>
+        <input type="range" id="strength" min="0.01" max="0.08" step="0.005" />
+      </label>
+
+      <label class="slider">
+        <span>Min. paragraph length <output id="minBlockOut"></output></span>
+        <input type="range" id="minBlockChars" min="0" max="200" step="10" />
+      </label>
+    </div>
+
+    <p class="status" id="status"></p>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
