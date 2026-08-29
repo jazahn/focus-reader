@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Focus Reader",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Emphasizes the leading letters of each word in article text to give your eye fixation points.",
   "permissions": ["storage"],
   "host_permissions": ["<all_urls>"],
