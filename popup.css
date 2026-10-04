@@ -171,6 +171,10 @@ hr {
   font-size: 12px;
 }
 
+.status.error {
+  color: #b3261e;
+}
+
 #unsupported {
   color: #b3261e;
   margin: 10px 0 0;

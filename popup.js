@@ -39,6 +39,11 @@ function render() {
   }
 }
 
+function setStatus(text, { error = false } = {}) {
+  el('status').textContent = text;
+  el('status').classList.toggle('error', error);
+}
+
 async function askPage() {
   if (tabId == null) return null;
   try {
@@ -51,36 +56,71 @@ async function askPage() {
 
 async function refreshStatus() {
   if (!settings.enabled) {
-    el('status').textContent = 'Off everywhere.';
+    setStatus('Off everywhere.');
     return;
   }
   if (!siteEnabled()) {
-    el('status').textContent = `Off on ${host}.`;
+    setStatus(`Off on ${host}.`);
     return;
   }
 
   const state = await askPage();
   if (!state) {
-    el('status').textContent = 'This page cannot be modified by extensions.';
+    setStatus('This page cannot be modified by extensions.');
     return;
   }
   if (!state.supported) {
     el('unsupported').hidden = false;
     el('panel').hidden = true;
-    el('status').textContent = '';
+    setStatus('');
     return;
   }
-  el('status').textContent = state.active
-    ? `${state.wordCount.toLocaleString()} words emphasized on this page.`
-    : 'Inactive on this page.';
+  setStatus(
+    state.active
+      ? `${state.wordCount.toLocaleString()} words emphasized on this page.`
+      : 'Inactive on this page.'
+  );
 }
 
+/* ------------------------------------------------------------------ *
+ * Persistence
+ *
+ * chrome.storage.sync rate-limits writes (120 per minute at the time of
+ * writing). A range input fires `input` on every step of a drag, so a few
+ * minutes of tuning the sliders used to exhaust that quota -- after which the
+ * next write, typically the master switch, was rejected and silently dropped.
+ * The popup had already flipped its own copy of the state, so it showed "off"
+ * while every open tab stayed on (GitHub issue #4).
+ *
+ * Two defenses: slider changes are coalesced into one write per pause, and a
+ * write that fails reloads the real stored state so the popup never claims a
+ * state that did not land.
+ * ------------------------------------------------------------------ */
+
+const SLIDER_DEBOUNCE_MS = 150;
+
+let pending = {};
+let flushTimer = 0;
 let statusTimer = 0;
 
-async function save(patch) {
-  settings = { ...settings, ...patch };
-  await chrome.storage.sync.set(patch);
-  render();
+async function flush() {
+  clearTimeout(flushTimer);
+  flushTimer = 0;
+
+  const patch = pending;
+  pending = {};
+  if (!Object.keys(patch).length) return;
+
+  try {
+    await chrome.storage.sync.set(patch);
+  } catch {
+    settings = { ...DEFAULTS, ...(await chrome.storage.sync.get(DEFAULTS)) };
+    render();
+    setStatus('Could not save. Chrome limits how often settings sync; try again in a minute.', {
+      error: true
+    });
+    return;
+  }
 
   // The page rebuilds on a 200ms debounce; wait past it so the word count we
   // show is the new one rather than the count we just invalidated.
@@ -88,9 +128,22 @@ async function save(patch) {
   statusTimer = setTimeout(refreshStatus, 350);
 }
 
+// Applies `patch` to the UI at once and persists it -- immediately for
+// switches, coalesced for sliders. Whatever is still pending rides along with
+// the next write, so a switch flipped mid-drag commits the slider too.
+function save(patch, { debounce = 0 } = {}) {
+  settings = { ...settings, ...patch };
+  Object.assign(pending, patch);
+  render();
+
+  clearTimeout(flushTimer);
+  if (debounce) flushTimer = setTimeout(flush, debounce);
+  else flush();
+}
+
 function bindSlider(id, key, parse = parseFloat) {
   el(id).addEventListener('input', (event) => {
-    save({ [key]: parse(event.target.value) });
+    save({ [key]: parse(event.target.value) }, { debounce: SLIDER_DEBOUNCE_MS });
   });
 }
 
@@ -126,6 +179,13 @@ async function init() {
   bindSlider('intensity', 'intensity');
   bindSlider('strength', 'strength');
   bindSlider('minBlockChars', 'minBlockChars', (v) => parseInt(v, 10));
+
+  // The popup closes the instant it loses focus. A slider value still waiting
+  // out its debounce would be lost; the set() call is dispatched synchronously
+  // even though its promise never gets to resolve.
+  window.addEventListener('pagehide', () => {
+    if (flushTimer) flush();
+  });
 }
 
 init();
