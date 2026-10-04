@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Focus Reader test bench</title>
+    <style>
+      body { max-width: 46rem; margin: 2rem auto; padding: 0 1rem;
+             font: 16px/1.6 Georgia, serif; }
+      nav, footer { font-family: system-ui, sans-serif; font-size: 14px; }
+      nav a { margin-right: 1rem; }
+      pre, code { font-family: ui-monospace, Menlo, monospace; font-size: 14px; }
+      pre { background: #f4f4f4; padding: 1rem; overflow-x: auto; }
+      .editor { border: 1px solid #ccc; padding: .75rem; min-height: 4rem; }
+      .ok::before  { content: "SHOULD be emphasized — "; color: #197f3d; font-weight: bold; }
+      .no::before  { content: "should NOT be emphasized — "; color: #b3261e; font-weight: bold; }
+      .label { font-family: system-ui, sans-serif; font-size: 12px;
+               text-transform: uppercase; letter-spacing: .06em; color: #666;
+               margin-top: 2rem; }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a href="#a">Home</a><a href="#b">Archive</a><a href="#c">About</a>
+      <a href="#d">Subscribe</a><a href="#e">Contact us today</a>
+    </nav>
+
+    <h1>Focus Reader test bench</h1>
+
+    <p class="label">Ordinary prose</p>
+    <p class="ok">
+      The quick brown fox jumps over the lazy dog while a nearby heron
+      considers whether any of this genuinely warrants its attention. Reading
+      this paragraph should feel noticeably faster once fixation points are
+      painted onto the leading characters of each word.
+    </p>
+
+    <p class="label">Prose containing links and inline code</p>
+    <p class="ok">
+      Configuration lives in <code>manifest.json</code>, which the browser reads
+      before <a href="#x">injecting the content script</a> into a matching page.
+      The identifier <code>document.body</code> must survive untouched so that
+      copying it yields exactly those characters and nothing else.
+    </p>
+
+    <p class="label">Preformatted block</p>
+    <pre class="no">function fixationLength(length, intensity) {
+  if (length &lt;= 1) return length;
+  return Math.min(Math.max(Math.floor(length * intensity), 1), length - 1);
+}</pre>
+
+    <p class="label">WYSIWYG paragraph (pre-wrap, as Confluence and Notion emit)</p>
+    <p class="ok" style="white-space: pre-wrap">
+      Editors set white-space: pre-wrap on every paragraph so that spacing the
+      author typed survives a round trip. This text still reflows normally when
+      the window is resized, so it is ordinary prose and must be highlighted --
+      treating pre-wrap as preformatted discards the entire article.
+    </p>
+
+    <p class="label">Syntax-highlighted block with no pre or code tag</p>
+    <div class="no" style="white-space: pre-wrap; font-family: ui-monospace, Menlo, monospace">{ "env": { "BASE_URL": "https://example.invalid/v1", "REGION": "us-east-1" } }</div>
+
+    <p class="label">Alignment-sensitive block (bare pre, does not wrap)</p>
+    <div class="no" style="white-space: pre; font-family: system-ui, sans-serif">Region      Requests   Errors
+us-east-1      14203       11
+eu-west-1       8871        4</div>
+
+    <p class="label">Form controls</p>
+    <p>
+      <input type="text" class="no" size="46"
+             value="Typing here must keep a normal caret and selection" />
+    </p>
+    <p>
+      <textarea class="no" rows="3" cols="46">Selection offsets inside a textarea must not shift when highlights are painted elsewhere on the page.</textarea>
+    </p>
+
+    <p class="label">Rich text editor</p>
+    <div class="editor no" contenteditable="true">
+      Click into this box and type. The caret must land exactly where you click,
+      and no fixation points should appear, because character offsets here are
+      owned by the editing surface rather than by the reader.
+    </div>
+
+    <p class="label">Link-dense list (navigation-like)</p>
+    <ul class="no">
+      <li><a href="#1">Quarterly report</a></li>
+      <li><a href="#2">Annual summary</a></li>
+      <li><a href="#3">Press release</a></li>
+    </ul>
+
+    <p class="label">Long list item (real content)</p>
+    <ul>
+      <li class="ok">
+        List items carrying a full sentence of explanation are treated as prose,
+        because the scoring heuristic weighs length against link density rather
+        than judging by tag name alone.
+      </li>
+    </ul>
+
+    <p class="label">Short strings below the paragraph threshold</p>
+    <p class="no">Too short.</p>
+
+    <p class="label">Non-Latin script</p>
+    <p class="ok" lang="el">
+      Η γρήγορη καφέ αλεπού πηδά πάνω από το τεμπέλικο σκυλί και συνεχίζει
+      προς το ποτάμι χωρίς να κοιτάξει πίσω της ούτε μια φορά.
+    </p>
+
+    <p class="label">Dynamically inserted content</p>
+    <p><button id="add">Append a paragraph</button></p>
+    <div id="sink"></div>
+
+    <p class="label">Deferred render into an existing container</p>
+    <p style="font-size:13px;color:#666">
+      Mimics how a framework app (Confluence, most SPAs) paints a placeholder
+      first and streams real content into the <em>same</em> element a moment
+      later. The container is scored as "too short" on the first pass, so its
+      cached verdict must be discarded when the content lands.
+    </p>
+    <div id="deferred" class="ok">Loading…</div>
+    <div id="deferred-child" class="ok">Loading…</div>
+
+    <footer>
+      <p>Footer text is skipped as a navigation landmark, even when it is long
+      enough to otherwise qualify as prose under the length heuristic.</p>
+    </footer>
+
+    <script>
+      // Two flavors of deferred render, both scored before their content
+      // existed: text swapped into the container itself, and a child element
+      // appended into it.
+      setTimeout(() => {
+        document.getElementById('deferred').textContent =
+          'This sentence replaced a placeholder one and a half seconds after ' +
+          'the page loaded, landing in an element that had already been ' +
+          'dismissed as too short to be prose.';
+
+        const host = document.getElementById('deferred-child');
+        host.textContent = '';
+        const p = document.createElement('p');
+        p.textContent =
+          'This paragraph was appended as a child of a container that had ' +
+          'already been scored and rejected, which is the exact shape of a ' +
+          'React app hydrating into a server-rendered shell.';
+        host.append(p);
+      }, 1500);
+
+      let n = 0;
+      document.getElementById('add').addEventListener('click', () => {
+        const p = document.createElement('p');
+        p.className = 'ok';
+        p.textContent =
+          'Paragraph ' + ++n + ' arrived after the initial page load, which ' +
+          'means the mutation observer had to notice it, score it, and paint ' +
+          'its fixation points without a reload.';
+        document.getElementById('sink').append(p);
+      });
+    </script>
+  </body>
+</html>
