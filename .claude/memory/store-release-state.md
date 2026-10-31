@@ -1,6 +1,6 @@
 ---
 name: store-release-state
-description: v0.2.0 is live and Public on the Chrome Web Store (id nkjiekhhenickfmfphkncpofpcchbdpc), so the next upload needs version ≥ 0.2.1; 0.2.1 (issue #4 fix) is in-tree and unreleased as of 2026-10-04
+description: Chrome Web Store (id nkjiekhhenickfmfphkncpofpcchbdpc) serves v0.2.1 since 2026-10-04; next upload needs version ≥ 0.2.2; release flow is dev → PR to main → GitHub release; git tags are unreliable (v1.0.0 is stray, v0.2.0 points at a 0.1.0 manifest)
 metadata:
   type: project
 ---
@@ -9,28 +9,32 @@ Focus Reader is on the Chrome Web Store as
 **`nkjiekhhenickfmfphkncpofpcchbdpc`**
 (https://chromewebstore.google.com/detail/nkjiekhhenickfmfphkncpofpcchbdpc).
 
-- **v0.1.0** was submitted and flipped to Public on 2026-08-20 (GitHub issue
-  #1, closed).
-- **v0.2.0** (master switch + faded icon, commit `004561d`, 2026-08-29) **is
-  the version the store serves** — confirmed 2026-10-04 both from the listing
-  page and from the store-installed copy in this machine's Chrome profile
-  (`Default/Extensions/nkji…/0.2.0_0`, location = web store). An earlier
-  version of this note said 0.2.0 was unreleased; that was stale.
-- **v0.2.1** bumps `manifest.json` for the issue #4 fix
-  ([[sync-storage-write-quota]]) and is in-tree, **not yet uploaded**.
+Release history (store side is the source of truth; verified from the
+listing page):
+
+- **v0.1.0** — submitted and flipped to Public 2026-08-20 (GitHub issue #1).
+- **v0.2.0** — master switch + faded icon, commit `004561d`, live on the store
+  by 2026-10-04 (an earlier version of this note wrongly said unreleased).
+- **v0.2.1** — issue #4 fix ([[sync-storage-write-quota]]), commit `c2ccfc4`,
+  merged dev → main via PR #8 and **uploaded to the store the same day,
+  2026-10-04** ("Updated October 4, 2026" on the listing). GitHub release
+  `v0.2.1` exists with no attached asset.
+
+**Release flow that was actually used for 0.2.1:** bump `manifest.json` →
+`./tools/package.sh` → commit on `dev` → PR to `main` → GitHub release with
+auto-generated notes → upload `dist/focus-reader-<version>.zip` in the
+developer dashboard. Issue #5 asks for CI to build the ZIP.
+
+**Gotcha: git tags do not map to shipped code.** `v0.2.0` and a stray
+`v1.0.0` both point at `cd27899` (merge of PR #3), whose `manifest.json`
+reads `0.1.0`. Only `v0.2.1` points at the commit that carries its version.
+Do not infer what the store serves from tags; read the listing or
+`Default/Extensions/nkji…/<version>_0` in the Chrome profile.
 
 **Why this matters:** the store rejects re-uploading a version it already has,
-so anything shipped after a release needs the `version` field raised first.
-No git tags exist for any release despite issue #1 listing tagging as done.
-
-**How to apply:** before any upload — confirm `manifest.json` `version` is
-higher than the store's, run `./tools/package.sh`, and tag the commit
-(`git tag v0.2.1`) so each store listing maps to a reproducible commit. The
-store keeps the uploaded ZIP but gives no diff against the working tree.
-Updates go through review again, usually faster than a first submission, and
-roll out to existing users over a few hours. Testing the store-installed copy
-is not the same as testing the unpacked tree: the installed copy is whatever
-was last uploaded.
+so anything shipped after a release needs `version` raised first (next is
+≥ 0.2.2). Testing the store-installed copy is not the same as testing the
+unpacked tree.
 
 `PUBLISHING.md` holds the full walkthrough, including the pre-written
 single-purpose statement, permission justifications, and data-usage answers
@@ -39,6 +43,6 @@ of review time; §6 documents the `optional_host_permissions` +
 `chrome.scripting` fallback, which is a real UX downgrade and a last resort.
 
 Known open follow-ups: no privacy policy page (only needed if the dashboard
-insists); issue #5 asks for a CI build of the store artifact.
+insists); issue #5 (CI build artifact); the stray `v1.0.0` tag.
 
 See [[trademark-constraint]] for the naming rules that govern listing copy.

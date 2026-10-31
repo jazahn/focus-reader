@@ -66,3 +66,10 @@ Grep all four after any rename.
 - Dev-only files (`test-page.html`, `diagnose.js`, `tools/`, docs) are kept out
   of the package by an explicit **allowlist** in `tools/package.sh`, not by
   ignore patterns, so a newly added dev file cannot ship by accident.
+- Never call `chrome.storage.sync.set` per event. Chrome rejects writes past
+  120/min, and a rejected write is silent unless caught. Route popup writes
+  through `save()`/`flush()` in `popup.js`, which coalesces slider input and
+  reverts the UI when a write fails. (Root cause of issue #4.)
+- Branded Chrome 137+ ignores `--load-extension`. For an automated run, use
+  puppeteer-core with `launch({ enableExtensions: [repoDir] })` against the
+  installed Chrome and serve the repo over `python3 -m http.server`.
