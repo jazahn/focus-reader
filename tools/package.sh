@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
-# Build the ZIP to upload to the Chrome Web Store.
+# Build the ZIP to upload to the Chrome Web Store. The same ZIP is what the
+# App Store Connect "Safari Web Extension Packager" takes for the iOS build.
 #
 # Files are listed explicitly rather than excluded by pattern, so a new dev-only
 # file never ships by accident. Reviewers do read the bundle, and shipping the
@@ -24,6 +25,7 @@ SHIP=(
   icons/icon32.png
   icons/icon48.png
   icons/icon128.png
+  icons/icon1024.png
   icons/icon16-off.png
   icons/icon32-off.png
   icons/icon48-off.png
@@ -48,6 +50,8 @@ if m.get("manifest_version") != 3:
     problems.append("manifest_version must be 3")
 if "128" not in m.get("icons", {}):
     problems.append("a 128x128 icon is required for the store listing")
+if "1024" not in m.get("icons", {}):
+    problems.append("a 1024x1024 icon is required for the App Store container app")
 if len(m.get("description", "")) > 132:
     problems.append("description exceeds the 132-character store limit")
 if not m.get("description"):
@@ -75,4 +79,6 @@ echo "Contents:"
 unzip -Z1 "$OUT" | sed 's/^/  /'
 echo
 echo "Remember: every upload needs a higher \"version\" in manifest.json than the"
-echo "last one you published. Current version is ${VERSION}."
+echo "last one you published, on both stores. Current version is ${VERSION}."
+echo "Chrome: developer dashboard. iOS: App Store Connect > Users and Access >"
+echo "Xcode Cloud > Safari Web Extension Packager (see PUBLISHING.md)."

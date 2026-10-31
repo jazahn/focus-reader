@@ -54,6 +54,20 @@ async function askPage() {
   }
 }
 
+// Safari grants <all_urls> per site, on the user's first tap, so until then
+// there is no content script and the tab's URL is hidden from us as well. The
+// blanket grant is checked rather than this tab's origin because the origin is
+// exactly what we cannot see. Chrome with the manifest's host_permissions
+// answers true and keeps its existing message; Chrome with site access set to
+// "On click" lands on the permission message too, which is also correct.
+async function hasSiteAccess() {
+  try {
+    return await chrome.permissions.contains({ origins: ['<all_urls>'] });
+  } catch {
+    return true;
+  }
+}
+
 async function refreshStatus() {
   if (!settings.enabled) {
     setStatus('Off everywhere.');
@@ -66,7 +80,11 @@ async function refreshStatus() {
 
   const state = await askPage();
   if (!state) {
-    setStatus('This page cannot be modified by extensions.');
+    setStatus(
+      (await hasSiteAccess())
+        ? 'This page cannot be modified by extensions.'
+        : 'Focus Reader does not have permission for this site yet. Allow it from the browser’s extensions menu.'
+    );
     return;
   }
   if (!state.supported) {
@@ -116,7 +134,7 @@ async function flush() {
   } catch {
     settings = { ...DEFAULTS, ...(await chrome.storage.sync.get(DEFAULTS)) };
     render();
-    setStatus('Could not save. Chrome limits how often settings sync; try again in a minute.', {
+    setStatus('Could not save. The browser limits how often settings sync; try again in a minute.', {
       error: true
     });
     return;
@@ -182,9 +200,14 @@ async function init() {
 
   // The popup closes the instant it loses focus. A slider value still waiting
   // out its debounce would be lost; the set() call is dispatched synchronously
-  // even though its promise never gets to resolve.
-  window.addEventListener('pagehide', () => {
+  // even though its promise never gets to resolve. The iPhone sheet is
+  // dismissed by swipe, which can skip pagehide, hence the second trigger.
+  const flushNow = () => {
     if (flushTimer) flush();
+  };
+  window.addEventListener('pagehide', flushNow);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) flushNow();
   });
 }
 

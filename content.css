@@ -5,10 +5,17 @@
  * among them -- so weight is faked by smearing the glyph with two stacked
  * text-shadows in the text's own color. currentColor keeps it correct on dark
  * backgrounds, inside links, and anywhere the page recolors text.
+ *
+ * Safari ignores text-shadow inside highlight pseudo-elements and, since 27.0,
+ * disallows the vendor-prefixed stroke properties there too, so it has no way
+ * to thicken glyphs. It gets a faint tint behind the fixation letters instead:
+ * content.js sets --focus-tint only when running under Safari, and the
+ * fallback value keeps this declaration inert everywhere else.
  */
 
 ::highlight(focus-fixation) {
   text-shadow:
     0 0 var(--focus-strength, 0.03em) currentColor,
     0 0 var(--focus-strength, 0.03em) currentColor;
+  background-color: var(--focus-tint, transparent);
 }

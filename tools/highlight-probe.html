@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>::highlight() property probe</title>
+    <!--
+      Which CSS properties does THIS browser actually apply inside ::highlight()?
+
+      Focus Reader fakes bold with text-shadow because font-weight is not allowed
+      in highlight pseudo-elements. Safari reportedly ignores text-shadow there and,
+      since 27.0, disallows the -webkit-text-stroke-* properties too. Nothing about
+      this is observable from script -- getComputedStyle cannot see highlight
+      pseudo styles -- so the only test is to look.
+
+      Open this file in each browser (no extension needed) and read each row:
+      the left column says what the row should look like if the property works.
+      On an iPhone, serve the repo with `python3 -m http.server` and open it over
+      the LAN, or AirDrop the file and open it from Files.
+
+      Dev-only. Lives in tools/ so the package allowlist never ships it.
+    -->
+    <style>
+      :root { --probe-tint: color-mix(in srgb, currentColor 14%, transparent); }
+      body { margin: 0; padding: 16px; font: 17px/1.5 Georgia, serif; }
+      h1 { font: 600 18px/1.3 system-ui, sans-serif; margin: 0 0 4px; }
+      .meta { font: 13px/1.4 system-ui, sans-serif; color: #666; margin: 0 0 18px; }
+      section { padding: 14px 16px; border-radius: 10px; margin-bottom: 16px; }
+      .light { background: #fff; color: #1a1a1a; border: 1px solid #ddd; }
+      .dark  { background: #1b1b1f; color: #e8e8ea; }
+      .row { display: grid; grid-template-columns: 9.5em 1fr; gap: 12px; align-items: start;
+             padding: 10px 0; border-top: 1px solid rgba(128,128,128,.25); }
+      .row:first-child { border-top: 0; }
+      .what { font: 12px/1.35 system-ui, sans-serif; color: #777; }
+      .what b { display: block; font-size: 13px; color: inherit; filter: brightness(1.15); }
+      .dark .what { color: #9a9a9e; }
+      p { margin: 0; }
+      .unsupported { color: #b3261e; font: 15px system-ui, sans-serif; }
+
+      /* --- the rules under test --- */
+      ::highlight(probe-shadow) {
+        text-shadow: 0 0 0.03em currentColor, 0 0 0.03em currentColor;
+      }
+      ::highlight(probe-stroke) {
+        -webkit-text-stroke-width: 0.03em;
+        -webkit-text-stroke-color: currentColor;
+      }
+      ::highlight(probe-tint) {
+        background-color: color-mix(in srgb, currentColor 14%, transparent);
+      }
+      ::highlight(probe-underline) {
+        text-decoration: underline;
+        text-decoration-thickness: 0.06em;
+        text-underline-offset: 0.12em;
+      }
+      ::highlight(probe-color) {
+        color: color-mix(in srgb, currentColor 70%, #3b6cff);
+      }
+      ::highlight(probe-var) {
+        background-color: var(--probe-tint);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>::highlight() property probe</h1>
+    <p class="meta" id="meta">Checking…</p>
+
+    <template id="rows">
+      <div class="row">
+        <div class="what"><b>reference</b>real &lt;b&gt; on the leading letters</div>
+        <p data-ref></p>
+      </div>
+      <div class="row">
+        <div class="what"><b>text-shadow</b>letters look thicker (Chrome's method)</div>
+        <p data-probe="shadow"></p>
+      </div>
+      <div class="row">
+        <div class="what"><b>-webkit-text-stroke</b>letters look thicker (disallowed in Safari 27+)</div>
+        <p data-probe="stroke"></p>
+      </div>
+      <div class="row">
+        <div class="what"><b>background-color</b>faint box behind the leading letters</div>
+        <p data-probe="tint"></p>
+      </div>
+      <div class="row">
+        <div class="what"><b>text-decoration</b>leading letters underlined</div>
+        <p data-probe="underline"></p>
+      </div>
+      <div class="row">
+        <div class="what"><b>color</b>leading letters tinted blue (tests currentColor)</div>
+        <p data-probe="color"></p>
+      </div>
+      <div class="row">
+        <div class="what"><b>var()</b>same faint box, via a custom property set from JS</div>
+        <p data-probe="var"></p>
+      </div>
+    </template>
+
+    <section class="light" id="light"></section>
+    <section class="dark" id="dark"></section>
+
+    <script>
+      const SAMPLE =
+        'The quick brown fox jumps over the lazy dog while a nearby heron ' +
+        'considers whether any of this warrants its attention.';
+      const INTENSITY = 0.5;
+
+      const supported =
+        typeof CSS !== 'undefined' && CSS.highlights && typeof Highlight === 'function' &&
+        typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function';
+
+      document.getElementById('meta').textContent =
+        `${navigator.userAgent} — Highlight API: ${supported ? 'present' : 'ABSENT'}`;
+
+      // Same rule as content.js: at least one plain character stays on words of 2+.
+      function fixationLength(length) {
+        if (length <= 1) return length;
+        return Math.min(Math.max(Math.floor(length * INTENSITY), 1), length - 1);
+      }
+
+      for (const id of ['light', 'dark']) {
+        document.getElementById(id).append(
+          document.getElementById('rows').content.cloneNode(true)
+        );
+      }
+
+      const segmenter = supported ? new Intl.Segmenter(undefined, { granularity: 'word' }) : null;
+
+      // Reference row: real <b> wrapping, the thing we are trying to imitate.
+      for (const p of document.querySelectorAll('[data-ref]')) {
+        if (!segmenter) { p.textContent = SAMPLE; continue; }
+        for (const seg of segmenter.segment(SAMPLE)) {
+          if (!seg.isWordLike) { p.append(seg.segment); continue; }
+          const n = fixationLength(seg.segment.length);
+          const b = document.createElement('b');
+          b.textContent = seg.segment.slice(0, n);
+          p.append(b, seg.segment.slice(n));
+        }
+      }
+
+      if (!supported) {
+        const note = document.createElement('p');
+        note.className = 'unsupported';
+        note.textContent = 'This browser has no CSS Custom Highlight API (Safari 17.2+, Chrome 105+). Nothing below can render.';
+        document.getElementById('meta').after(note);
+      }
+
+      // Probe rows: one Highlight per property under test, shared across both themes.
+      const highlights = {};
+      for (const p of document.querySelectorAll('[data-probe]')) {
+        p.textContent = SAMPLE;
+        if (!supported) continue;
+        const name = p.dataset.probe;
+        const hl = highlights[name] || (highlights[name] = new Highlight());
+        const text = p.firstChild;
+        for (const seg of segmenter.segment(SAMPLE)) {
+          if (!seg.isWordLike) continue;
+          const r = new Range();
+          r.setStart(text, seg.index);
+          r.setEnd(text, seg.index + fixationLength(seg.segment.length));
+          hl.add(r);
+        }
+      }
+      for (const [name, hl] of Object.entries(highlights)) {
+        CSS.highlights.set(`probe-${name}`, hl);
+      }
+
+      // The var() row reads a property set from script, exactly as content.js
+      // does for --focus-strength / --focus-tint.
+      document.documentElement.style.setProperty(
+        '--probe-tint', 'color-mix(in srgb, currentColor 14%, transparent)'
+      );
+    </script>
+  </body>
+</html>

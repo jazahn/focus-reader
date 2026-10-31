@@ -344,11 +344,26 @@
     }
   }
 
+  // Safari ignores text-shadow inside ::highlight() and, since 27.0, disallows
+  // the vendor-prefixed stroke properties there, so it cannot thicken glyphs at
+  // all. It gets a faint tint behind the fixation letters instead, driven by the
+  // same Boldness slider. Detection is by vendor string: highlight pseudo styles
+  // are invisible to getComputedStyle, so there is nothing to feature-test.
+  const IS_SAFARI =
+    typeof navigator !== 'undefined' && navigator.vendor === 'Apple Computer, Inc.';
+
+  // Maps the slider's shadow radius (0.01-0.08em) onto tint opacity (6%-22%).
+  // currentColor keeps the tint legible on dark pages and inside colored links.
+  function tintFor(strength) {
+    const t = Math.min(Math.max((strength - 0.01) / 0.07, 0), 1);
+    const percent = Math.round(6 + t * 16);
+    return `color-mix(in srgb, currentColor ${percent}%, transparent)`;
+  }
+
   function applyStrength() {
-    document.documentElement.style.setProperty(
-      '--focus-strength',
-      `${settings.strength}em`
-    );
+    const style = document.documentElement.style;
+    style.setProperty('--focus-strength', `${settings.strength}em`);
+    if (IS_SAFARI) style.setProperty('--focus-tint', tintFor(settings.strength));
   }
 
   function start() {
@@ -452,6 +467,7 @@
     highlight = null;
 
     document.documentElement.style.removeProperty('--focus-strength');
+    document.documentElement.style.removeProperty('--focus-tint');
 
     verdicts = new WeakMap();
     painted = new WeakMap();

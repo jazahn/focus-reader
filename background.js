@@ -7,6 +7,10 @@
  * from -- chrome:// pages, the web store, the PDF viewer -- shows a dimmed icon
  * without needing to be detected. A content script that goes active promotes its
  * own tab to the full-color icon.
+ *
+ * Safari renders toolbar icons as template images (alpha only, tinted by the
+ * system), so there the active/muted hue difference collapses to the 0.55 vs
+ * 1.0 opacity difference baked into the two icon sets. Subtle, but present.
  */
 
 const DEFAULTS = {
@@ -59,23 +63,27 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === 'loading') setTabIcon(tabId, false);
 });
 
-chrome.commands.onCommand.addListener(async (command, tab) => {
-  if (command !== 'toggle-site' || !tab || !tab.url) return;
+// iOS Safari has no keyboard-shortcut API; an unguarded reference would throw
+// at load and take the icon listeners above down with it, silently.
+if (chrome.commands) {
+  chrome.commands.onCommand.addListener(async (command, tab) => {
+    if (command !== 'toggle-site' || !tab || !tab.url) return;
 
-  const host = hostOf(tab.url);
-  if (!host) return;
+    const host = hostOf(tab.url);
+    if (!host) return;
 
-  const { enabled, siteRules } = await chrome.storage.sync.get(DEFAULTS);
-  const activeHere = enabled && siteRules[host] !== 'off';
+    const { enabled, siteRules } = await chrome.storage.sync.get(DEFAULTS);
+    const activeHere = enabled && siteRules[host] !== 'off';
 
-  if (activeHere) {
-    siteRules[host] = 'off';
-    await chrome.storage.sync.set({ siteRules });
-  } else {
-    // "Make it work here": clear this site's block and lift the master switch if
-    // that was what was holding it back. Pressing the shortcut should always
-    // change what you are looking at.
-    delete siteRules[host];
-    await chrome.storage.sync.set({ enabled: true, siteRules });
-  }
-});
+    if (activeHere) {
+      siteRules[host] = 'off';
+      await chrome.storage.sync.set({ siteRules });
+    } else {
+      // "Make it work here": clear this site's block and lift the master switch
+      // if that was what was holding it back. Pressing the shortcut should
+      // always change what you are looking at.
+      delete siteRules[host];
+      await chrome.storage.sync.set({ enabled: true, siteRules });
+    }
+  });
+}

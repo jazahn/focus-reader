@@ -2,6 +2,9 @@
 <html>
   <head>
     <meta charset="utf-8" />
+    <!-- iPhone Safari shows the popup as a full-width sheet; without this it
+         lays out at desktop width and zooms out. Chrome ignores it. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
@@ -15,7 +18,7 @@
 
     <p id="unsupported" hidden>
       This browser is missing the CSS Custom Highlight API or Intl.Segmenter.
-      Chrome 105 or newer is required.
+      Chrome 105 or Safari 17.2 or newer is required.
     </p>
 
     <div id="panel">

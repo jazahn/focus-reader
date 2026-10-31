@@ -20,12 +20,21 @@
 }
 
 body {
+  /* Chrome sizes the popup to the document, so this is the popup's width. */
   width: 280px;
   margin: 0;
   padding: 14px 16px 16px;
   font: 13px/1.45 system-ui, -apple-system, sans-serif;
   color: var(--fg);
   background: var(--bg);
+}
+
+/* On a touch device (iPhone Safari) the popup is a sheet spanning the screen;
+   a fixed 280px would leave a narrow column down the left edge. */
+@media (pointer: coarse) {
+  body {
+    width: auto;
+  }
 }
 
 .masthead {

@@ -26,6 +26,16 @@
 
     <h1>Focus Reader test bench</h1>
 
+    <p style="font-size:13px;color:#666">
+      What "emphasized" looks like depends on the browser. Chrome thickens the
+      leading letters with two stacked text-shadows. Safari ignores text-shadow
+      inside ::highlight() and disallows the prefixed stroke properties there,
+      so it shows a faint tint behind the leading letters instead. Every
+      SHOULD / should NOT label below applies to both; only the look differs.
+      To see which properties this browser honors in a highlight, open
+      tools/highlight-probe.html.
+    </p>
+
     <p class="label">Ordinary prose</p>
     <p class="ok">
       The quick brown fox jumps over the lazy dog while a nearby heron

@@ -1,7 +1,9 @@
 # Focus Reader
 
-Chrome extension (Manifest V3) that emphasizes the leading letters of words in
-article text, in place, without mutating the page DOM.
+Browser extension (Manifest V3) that emphasizes the leading letters of words in
+article text, in place, without mutating the page DOM. One source tree ships to
+the Chrome Web Store and, wrapped server-side by App Store Connect's Safari Web
+Extension Packager, to iOS Safari. There is no Xcode project in the repo.
 
 @.claude/memory/INDEX.md
 
@@ -31,6 +33,11 @@ The first re-reads the code; the second re-injects it. Both are required.
   It re-runs the scoring gates read-only and prints a **Verdicts by reason**
   table naming which gate rejected what. Reach for this first on any
   site-compatibility report; it turns guessing into an answer.
+- `tools/highlight-probe.html` needs no extension. It registers one highlight
+  per candidate CSS property and shows which ones this browser actually paints
+  inside `::highlight()`. Open it in a browser before trusting any claim about
+  what Safari (or a new Chrome) renders; highlight pseudo styles are invisible
+  to `getComputedStyle`, so looking is the only test.
 
 Errors surface in three separate consoles, which is the usual stumbling block:
 content script errors in the page's own console, service worker errors via the
@@ -46,23 +53,34 @@ Inspect popup.
   command, because content scripts cannot do either.
 - `popup.*` — toolbar UI.
 
-Four identifiers must agree across file boundaries, and every one of them fails
+Five identifiers must agree across file boundaries, and every one of them fails
 **silently** rather than throwing:
 
 | Identifier | Must match between | Symptom if it drifts |
 |---|---|---|
 | `focus-fixation` | `content.js` ↔ `content.css` | nothing renders at all |
-| `--focus-strength` | `content.js` ↔ `content.css` | boldness slider does nothing |
+| `--focus-strength` | `content.js` ↔ `content.css` | boldness slider does nothing (Chrome) |
+| `--focus-tint` | `content.js` ↔ `content.css` | Safari renders nothing at all |
 | `focus:getState` | `popup.js` ↔ `content.js` | popup claims page is unreachable |
 | `focus:state` | `content.js` ↔ `background.js` | toolbar icon never un-fades |
 
-Grep all four after any rename.
+Grep all five after any rename.
+
+Safari cannot thicken glyphs inside `::highlight()` (`text-shadow` is ignored
+and the prefixed stroke properties are disallowed since Safari 27.0), so
+`content.js` detects Safari by `navigator.vendor` and sets `--focus-tint`, a
+faint `background-color` behind the fixation letters. Chrome never sets it.
 
 ## Conventions
 
 - Keep it dependency-free and build-step-free. That is a large part of why a
   store reviewer can audit it.
-- Icons are generated, never hand-edited — change `tools/make-icons.py`.
+- Icons are generated, never hand-edited — change `tools/make-icons.py`. The
+  1024 is opaque RGB with square corners on purpose: App Store Connect rejects
+  a large icon with an alpha channel, and iOS masks the corners itself.
+- Every `chrome.*` call must also work in Safari, which aliases the namespace
+  but lacks `commands` on iOS and grants `<all_urls>` per site. Guard
+  namespaces that may be absent; never assume a content script is present.
 - Dev-only files (`test-page.html`, `diagnose.js`, `tools/`, docs) are kept out
   of the package by an explicit **allowlist** in `tools/package.sh`, not by
   ignore patterns, so a newly added dev file cannot ship by accident.

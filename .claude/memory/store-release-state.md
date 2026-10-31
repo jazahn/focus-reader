@@ -19,6 +19,10 @@ listing page):
   merged dev → main via PR #8 and **uploaded to the store the same day,
   2026-10-04** ("Updated October 4, 2026" on the listing). GitHub release
   `v0.2.1` exists with no attached asset.
+- **v0.2.2** — Safari/iOS compatibility ([[ios-safari-port]]): tint fallback,
+  permission-aware popup, viewport meta, `commands` guard, opaque 1024 icon.
+  In-tree on `dev` since 2026-10-31, **not uploaded anywhere yet**. It is the
+  first version meant for both stores; the App Store side has no record yet.
 
 **Release flow that was actually used for 0.2.1:** bump `manifest.json` →
 `./tools/package.sh` → commit on `dev` → PR to `main` → GitHub release with
@@ -42,7 +46,14 @@ single-purpose statement, permission justifications, and data-usage answers
 of review time; §6 documents the `optional_host_permissions` +
 `chrome.scripting` fallback, which is a real UX downgrade and a last resort.
 
-Known open follow-ups: no privacy policy page (only needed if the dashboard
-insists); issue #5 (CI build artifact); the stray `v1.0.0` tag.
+**App Store (iOS):** no app record, bundle ID, or upload yet as of
+2026-10-31. The upload path is the Safari Web Extension Packager in App Store
+Connect, fed the same ZIP (`PUBLISHING.md` Part 2). After the first upload,
+record here: the App Store id, the bundle ID, whether the packager took
+`version` from the manifest, and how build numbers behave on re-upload.
+
+Known open follow-ups: `PRIVACY.md` exists in-tree but needs a public URL for
+the App Store listing (the GitHub blob page is enough); issue #5 (CI build
+artifact); the stray `v1.0.0` tag.
 
 See [[trademark-constraint]] for the naming rules that govern listing copy.

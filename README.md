@@ -1,8 +1,8 @@
 # Focus Reader
 
-A Chrome extension that emphasizes the leading letters of words in article text
-**on the live page**, without building a reader view and without modifying the
-page's DOM.
+A browser extension for Chrome and iOS Safari that emphasizes the leading
+letters of words in article text **on the live page**, without building a
+reader view and without modifying the page's DOM.
 
 ---
 
@@ -64,8 +64,7 @@ JavaScript contexts. They communicate two ways, both used here:
 4. The extension appears as a card. Pin it to the toolbar via the puzzle-piece
    icon so you can reach the popup.
 
-Requires Chrome 105 or newer. There is no icon file, so Chrome shows a generic
-placeholder — that is expected and harmless.
+Requires Chrome 105 or newer.
 
 ### Try it on the test bench
 
@@ -108,6 +107,30 @@ Good stress tests, in rough order of difficulty: a Wikipedia article, a news
 site, a documentation page with lots of code samples, GitHub (heavy UI chrome
 plus code), Gmail (an app, not an article), and any React-heavy SPA where you
 navigate between pages without a reload.
+
+### Safari on iOS
+
+The same files ship to iPhone and iPad through the App Store, wrapped in the
+container app Apple requires (built by App Store Connect, not in this repo —
+see [PUBLISHING.md](PUBLISHING.md) Part 2). Requires iOS 17.2 or newer. After
+installing: Settings → Apps → Safari → Extensions → Focus Reader → on, then
+allow it for all websites, or allow it site by site from the extensions menu
+in the address bar. Until a site is allowed, nothing runs there and the popup
+says so.
+
+Three things look different from Chrome, none of them bugs:
+
+- **Emphasis is a faint tint behind the leading letters, not thicker letters.**
+  Safari does not apply `text-shadow` inside `::highlight()` and disallows the
+  prefixed stroke properties there, so there is no way to fake bold. The
+  Boldness slider controls the tint's strength instead.
+- **There is no keyboard shortcut** on iPhone or iPad.
+- **The toolbar icon is drawn as a template image**, so the active/off
+  difference is a lighter versus darker glyph rather than a colour change.
+
+To see for yourself which highlight properties a given browser honors, open
+[tools/highlight-probe.html](tools/highlight-probe.html) in it; no extension
+is needed.
 
 ### Controls
 
@@ -211,6 +234,13 @@ enough to read as bolder while automatically staying correct on dark
 backgrounds and inside colored links. On very thin fonts this reads weaker than
 true bold; the **Boldness** slider compensates.
 
+Safari applies neither `text-shadow` nor the vendor-prefixed stroke properties
+inside a highlight, which leaves only `color`, `background-color`, and
+`text-decoration`. There, `content.js` sets a second custom property,
+`--focus-tint`, and the same rule paints a faint `background-color` behind the
+fixation letters. The property is unset in every other browser, so the
+declaration is inert outside Safari.
+
 ### Deciding what counts as prose
 
 Instead of extracting an article into a reader view, the extension scores
@@ -286,15 +316,17 @@ This one splits the work by cost:
 |---|---|
 | [manifest.json](manifest.json) | Declares permissions, scripts, and the hotkey |
 | [content.js](content.js) | All the real logic: scanning, scoring, highlighting |
-| [content.css](content.css) | The `::highlight()` rule that fakes bold |
-| [background.js](background.js) | Service worker; handles Alt+B only |
+| [content.css](content.css) | The `::highlight()` rule that fakes bold (Chrome) or tints (Safari) |
+| [background.js](background.js) | Service worker; per-tab icon state and Alt+B |
 | [popup.html](popup.html) / [popup.css](popup.css) / [popup.js](popup.js) | Toolbar UI |
-| [icons/](icons/) | Generated PNGs, 16/32/48/128 |
+| [icons/](icons/) | Generated PNGs, 16/32/48/128 in two sets, plus the opaque 1024 App Store icon |
 | [test-page.html](test-page.html) | Self-labeling test bench |
 | [diagnose.js](diagnose.js) | Paste-in console script explaining a page's verdicts |
+| [tools/highlight-probe.html](tools/highlight-probe.html) | Shows which CSS properties a browser honors inside `::highlight()` |
 | [tools/make-icons.py](tools/make-icons.py) | Redraws the icons; stdlib only |
 | [tools/package.sh](tools/package.sh) | Builds the store ZIP from the shipping files |
-| [PUBLISHING.md](PUBLISHING.md) | Chrome Web Store walkthrough |
+| [PUBLISHING.md](PUBLISHING.md) | Chrome Web Store and App Store walkthroughs |
+| [PRIVACY.md](PRIVACY.md) | The privacy policy the App Store listing links to |
 
 Everything from `test-page.html` down is development-only and is excluded from
 the packaged build.

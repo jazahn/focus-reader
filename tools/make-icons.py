@@ -10,6 +10,10 @@ faded trailing block. It says what the extension does without using letterforms,
 which keeps it legible at 16px where real glyphs turn to mush.
 
     python3 tools/make-icons.py
+
+Besides the two toolbar sets, this writes one 1024px App Store icon: opaque,
+square-cornered, no alpha channel. App Store Connect rejects a large icon with
+transparency, and iOS masks the corners itself. Chrome ignores the extra size.
 """
 
 import struct
@@ -18,6 +22,11 @@ from pathlib import Path
 
 SIZES = (16, 32, 48, 128)
 SUPERSAMPLE = 4
+
+# The 1024 render is 64x the pixel count of the 128; at 4x4 taps that is
+# 16.7M samples of pure Python. Two taps per axis is invisible at that size.
+APP_STORE_SIZE = 1024
+APP_STORE_SUPERSAMPLE = 2
 
 # Two palettes over identical geometry. The muted one is the toolbar icon
 # whenever the extension is not painting the current tab. It is neutral gray at
@@ -40,6 +49,10 @@ MUTED = {
 }
 
 PALETTES = (ACTIVE, MUTED)
+
+# App Store variant: same mark, but the background fills the whole square and
+# nothing is translucent. iOS applies its own corner mask.
+APP_STORE = dict(ACTIVE, square=True, suffix="")
 
 CORNER_RADIUS = 0.22
 BAR_RADIUS = 0.020
@@ -68,7 +81,7 @@ def in_round_rect(x, y, x0, y0, x1, y1, r):
 
 def sample(x, y, palette):
     """Return (r, g, b, alpha 0..1) for one point in the unit square."""
-    if not in_round_rect(x, y, 0.0, 0.0, 1.0, 1.0, CORNER_RADIUS):
+    if not palette.get("square") and not in_round_rect(x, y, 0.0, 0.0, 1.0, 1.0, CORNER_RADIUS):
         return (0, 0, 0, 0.0)
 
     opacity = palette["opacity"]
@@ -97,19 +110,19 @@ def sample(x, y, palette):
     return (red, green, blue, opacity)
 
 
-def render(size, palette):
+def render(size, palette, supersample=SUPERSAMPLE):
     """Render one icon, returning raw RGBA bytes."""
     pixels = bytearray(size * size * 4)
-    step = 1.0 / (size * SUPERSAMPLE)
-    taps = SUPERSAMPLE * SUPERSAMPLE
+    step = 1.0 / (size * supersample)
+    taps = supersample * supersample
 
     for py in range(size):
         for px in range(size):
             r = g = b = a = 0.0
-            for sy in range(SUPERSAMPLE):
-                y = (py * SUPERSAMPLE + sy + 0.5) * step
-                for sx in range(SUPERSAMPLE):
-                    x = (px * SUPERSAMPLE + sx + 0.5) * step
+            for sy in range(supersample):
+                y = (py * supersample + sy + 0.5) * step
+                for sx in range(supersample):
+                    x = (px * supersample + sx + 0.5) * step
                     sr, sg, sb, sa = sample(x, y, palette)
                     r += sr * sa
                     g += sg * sa
@@ -127,11 +140,21 @@ def render(size, palette):
     return pixels
 
 
-def write_png(path, size, pixels):
+def write_png(path, size, pixels, alpha=True):
+    """Write RGBA pixels as PNG. With alpha=False the alpha bytes are dropped and
+    the file is written as plain RGB (color type 2), so no alpha channel exists
+    for a store validator to object to."""
     stride = size * 4
-    raw = b"".join(
-        b"\x00" + bytes(pixels[row * stride:(row + 1) * stride]) for row in range(size)
-    )
+    if alpha:
+        color_type = 6
+        rows = (bytes(pixels[row * stride:(row + 1) * stride]) for row in range(size))
+    else:
+        color_type = 2
+        rows = (
+            b"".join(bytes(pixels[i:i + 3]) for i in range(row * stride, (row + 1) * stride, 4))
+            for row in range(size)
+        )
+    raw = b"".join(b"\x00" + row for row in rows)
 
     def chunk(tag, data):
         return (
@@ -143,7 +166,7 @@ def write_png(path, size, pixels):
 
     path.write_bytes(
         b"\x89PNG\r\n\x1a\n"
-        + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0))
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, color_type, 0, 0, 0))
         + chunk(b"IDAT", zlib.compress(raw, 9))
         + chunk(b"IEND", b"")
     )
@@ -158,6 +181,11 @@ def main():
             path = out / f"icon{size}{palette['suffix']}.png"
             write_png(path, size, render(size, palette))
             print(f"wrote {path.relative_to(path.parent.parent)} ({path.stat().st_size} bytes)")
+
+    path = out / f"icon{APP_STORE_SIZE}.png"
+    pixels = render(APP_STORE_SIZE, APP_STORE, supersample=APP_STORE_SUPERSAMPLE)
+    write_png(path, APP_STORE_SIZE, pixels, alpha=False)
+    print(f"wrote {path.relative_to(path.parent.parent)} ({path.stat().st_size} bytes, opaque RGB)")
 
 
 if __name__ == "__main__":
