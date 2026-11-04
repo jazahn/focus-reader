@@ -4,7 +4,8 @@ const DEFAULTS = {
   strength: 0.03,
   minBlockChars: 40,
   maxLinkDensity: 0.5,
-  siteRules: {}
+  siteRules: {},
+  siteProfiles: {}
 };
 
 const el = (id) => document.getElementById(id);
@@ -163,6 +164,26 @@ async function init() {
 
   render();
   refreshStatus();
+
+  el('sitePresets').hidden = !host || (!FocusPresets.config && !Object.hasOwn(settings.siteProfiles, host));
+  el('saveSitePreset').hidden = !FocusPresets.config;
+  el('saveSitePreset').addEventListener('click', async () => {
+    el('saveSitePreset').disabled = true;
+    try {
+      await flush();
+      const result = await chrome.runtime.sendMessage({ type: 'focus:saveSitePreset', tabId,
+        profile: { intensity: settings.intensity, strength: settings.strength, minBlockChars: settings.minBlockChars } });
+      if (!result?.ok) throw new Error(result?.error || 'Could not save this site preset.');
+      settings = { ...DEFAULTS, ...(await chrome.storage.sync.get(DEFAULTS)) };
+      setStatus('Site preset saved. Global formatting and site switches remain available.');
+    } catch (error) { setStatus(error.message, { error: true }); }
+    finally { el('saveSitePreset').disabled = false; }
+  });
+  el('clearSitePreset').addEventListener('click', () => {
+    const siteProfiles = { ...settings.siteProfiles };
+    delete siteProfiles[host];
+    save({ siteProfiles });
+  });
 
   el('enabled').addEventListener('change', (event) => {
     save({ enabled: event.target.checked });

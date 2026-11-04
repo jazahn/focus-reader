@@ -17,6 +17,7 @@ SHIP=(
   content.js
   content.css
   background.js
+  site-presets.js
   popup.html
   popup.css
   popup.js
@@ -60,7 +61,7 @@ if problems:
     sys.exit(1)
 PY
 
-for f in content.js background.js popup.js; do
+for f in content.js background.js popup.js site-presets.js; do
   node --check "$f" >/dev/null 2>&1 || { echo "syntax error in $f" >&2; exit 1; }
 done
 

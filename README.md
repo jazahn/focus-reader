@@ -298,3 +298,29 @@ This one splits the work by cost:
 
 Everything from `test-page.html` down is development-only and is excluded from
 the packaged build.
+
+## Optional site preset pilot
+
+Global formatting, the global switch and per-site on/off stay free and offline.
+The new optional capability saves the three current slider values as an exact-host
+formatting preset; clearing a preset always works without billing. Presets already
+saved continue working offline. This checks access when saving, not on every page
+load, and does not claim tamper-proof subscription DRM for an open-source extension.
+
+`site-presets.js` ships with `config = null`, so no billing UI or network is enabled.
+A merchant can configure an HTTPS API origin, App ID, explicit sandbox/live environment
+and access Feature UUID after providing an authenticated account handoff. That future
+handoff must store only a scoped Customer token as `longplayCustomerToken` in
+`chrome.storage.session` (trusted extension contexts only, never sync storage).
+No account/checkout page or token handoff is implemented by this pilot. Never embed
+a server key, accept a token from an arbitrary web page, or broaden external messaging.
+
+The background worker admits saves only from the extension popup, resolves the host
+from the browser tab and checks the Customer's access Feature using Longplay's 0.10
+HTTP contract. Timeout, redirect, protocol/scope mismatch, missing token and denial
+never save a paid preset. Page URLs, article text and formatting do not go to billing.
+No SDK dependency, remote JavaScript or extra manifest permission is introduced.
+A lifetime purchase or subscription product and Chrome Store policy compliance remain
+merchant decisions before enabling the configuration.
+
+Offline checks: `node --test tools/site-presets.test.cjs` and `./tools/package.sh`.
