@@ -33,7 +33,8 @@
     strength: 0.03,
     minBlockChars: 40,
     maxLinkDensity: 0.5,
-    siteRules: {}
+    siteRules: {},
+    siteProfiles: {}
   };
 
   /* ------------------------------------------------------------------ *
@@ -75,6 +76,7 @@
    * ------------------------------------------------------------------ */
 
   let settings = { ...DEFAULTS };
+  let formatting = { ...DEFAULTS };
   let active = false;
 
   const segmenter = SUPPORTED
@@ -127,7 +129,7 @@
       const word = segment.segment;
       if (!HAS_LETTER.test(word)) continue;
 
-      let length = fixationLength(word.length, settings.intensity);
+      let length = fixationLength(word.length, formatting.intensity);
 
       // Range offsets are UTF-16 code units; never cut a surrogate pair in half.
       const lastUnit = word.charCodeAt(length - 1);
@@ -212,7 +214,7 @@
       ok = false;
     } else {
       const { chars, linkChars } = measure(block);
-      if (chars < settings.minBlockChars) ok = false;
+      if (chars < formatting.minBlockChars) ok = false;
       else if (linkChars / chars > settings.maxLinkDensity) ok = false;
     }
 
@@ -347,7 +349,7 @@
   function applyStrength() {
     document.documentElement.style.setProperty(
       '--focus-strength',
-      `${settings.strength}em`
+      `${formatting.strength}em`
     );
   }
 
@@ -461,11 +463,12 @@
 
   // Keys whose values are baked into the Ranges themselves. Anything else is
   // cosmetic and can be changed without rebuilding.
-  const STRUCTURAL_KEYS = ['intensity', 'minBlockChars', 'maxLinkDensity'];
+  const STRUCTURAL_KEYS = ['intensity', 'minBlockChars', 'maxLinkDensity', 'siteProfiles'];
 
   let rebuildTimer = 0;
 
   function sync({ rebuild = true } = {}) {
+    formatting = FocusPresets.settingsFor(settings, location.hostname);
     clearTimeout(rebuildTimer);
 
     const wanted = effectiveState() && SUPPORTED;

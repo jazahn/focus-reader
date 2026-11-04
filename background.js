@@ -9,6 +9,29 @@
  * own tab to the full-color icon.
  */
 
+importScripts('site-presets.js');
+
+// Only the extension popup can save a paid preset. Content scripts cannot supply
+// an account, Customer ID, token, billing endpoint or a remote settings payload.
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.type !== 'focus:saveSitePreset') return false;
+  if (sender.url !== chrome.runtime.getURL('popup.html')) return false;
+  (async () => {
+    const tab = await chrome.tabs.get(message.tabId);
+    const host = hostOf(tab.url);
+    if (!host) throw new Error('Open a web page to save its preset.');
+    const profile = FocusPresets.normalize(message.profile);
+    const { longplayCustomerToken } = await chrome.storage.session.get('longplayCustomerToken');
+    if (!await FocusPresets.checkAccess(FocusPresets.config, longplayCustomerToken)) {
+      throw new Error('Your account does not include site presets.');
+    }
+    const { siteProfiles = {} } = await chrome.storage.sync.get('siteProfiles');
+    await chrome.storage.sync.set({ siteProfiles: { ...siteProfiles, [host]: profile } });
+    sendResponse({ ok: true });
+  })().catch((error) => sendResponse({ ok: false, error: error.message }));
+  return true;
+});
+
 const DEFAULTS = {
   enabled: true,
   siteRules: {}
